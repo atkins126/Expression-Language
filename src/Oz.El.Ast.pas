@@ -1,21 +1,43 @@
-unit ElAst;
+(* Oz Expression Language, for Delphi
+ * Copyright (c) 2021 Tomsk, Marat Shaimardanov
+ *
+ * This file is part of Oz Expression Language, for Delphi
+ * is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This file is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this file. If not, see <https://www.gnu.org/licenses/>.
+*)
+
+unit Oz.El.Ast;
 
 interface
 
 uses
   SysUtils, Classes, Generics.Collections, Rtti, TypInfo,
-  El, ElScanner, ElUtils;
+  Oz.El.Classes, Oz.El.Scanner, Oz.El.Utils;
 
 type
-
   TNode = class;
+
+{$Region 'TNodeVisitor'}
 
   TNodeVisitor = class
   public
     procedure Visit(Node: TNode); virtual; abstract;
   end;
 
-  // The basic type of all nodes included in the abstract syntax tree.
+{$EndRegion}
+
+{$Region 'TNode: The basic type of all nodes included in the abstract syntax tree.'}
+
   TNode = class
   private
     FOp: TSymbol;
@@ -54,7 +76,10 @@ type
     property Image: string read FImage;
   end;
 
-  // Constant - string, number or Boolean
+{$EndRegion}
+
+{$Region 'TAstLiteralExpression: Constant - string, number or Boolean'}
+
   TAstLiteralExpression = class(TNode)
   private
     FValue: TValue;
@@ -66,7 +91,10 @@ type
     procedure SetImage(const Image: string); virtual;
   end;
 
-  // Variable or function identifier
+{$EndRegion}
+
+{$Region 'TAstLiteralExpression: Variable or function identifier'}
+
   TAstIdentifier = class(TNode)
   public
     constructor Create(Op: TSymbol; const Ident: string);
@@ -76,7 +104,11 @@ type
     function IsReadOnly(Ctx: TELContext): Boolean; override;
   end;
 
-  // The expression in parentheses ident ( '[' Expr ']' | '(' Expr, [',' Expr] ')' ) )
+{$EndRegion}
+
+{$Region 'TAstBracedExpression: The expression in parentheses ident'}
+
+  // ( '[' Expr ']' | '(' Expr, [',' Expr] ')' ) )
   TAstBracedExpression = class(TNode)
   public
     function GetType(Ctx: TELContext): PTypeInfo; override;
@@ -85,40 +117,60 @@ type
     function IsReadOnly(Ctx: TELContext): Boolean; override;
   end;
 
-  // Conditional operator - BoolExpr ? Expr1 : Expr2
+{$EndRegion}
+
+{$Region 'TAstChoice: Conditional operator - BoolExpr ? Expr1 : Expr2'}
+
   TAstChoice = class(TNode)
   public
     function GetType(Ctx: TELContext): PTypeInfo; override;
     function GetValue(Ctx: TELContext): TValue; override;
   end;
 
-  // Comparison operation - Expr1 RelOp Expr2
+{$EndRegion}
+
+{$Region 'TAstRelation: Comparison operation - Expr1 RelOp Expr2'}
+
   TAstRelation = class(TNode)
   public
     function GetType(Ctx: TELContext): PTypeInfo; override;
     function GetValue(Ctx: TELContext): TValue; override;
   end;
 
-  // Unary operation - [ '+' | '-' | 'empty' | 'not' ] Expr
+{$EndRegion}
+
+{$Region 'TAstUnaryOp: Unary operation - [ '+' | '-' | 'empty' | 'not' ] Expr'}
+
   TAstUnaryOp = class(TNode)
   public
     function GetType(Ctx: TELContext): PTypeInfo; override;
     function GetValue(Ctx: TELContext): TValue; override;
   end;
 
-  // Binary operation - '+' | '-' | '*' | '/' | 'div' | 'mod' ...
+{$EndRegion}
+
+{$Region 'TAstBinaryOp: Binary operation - '+' | '-' | '*' | '/' | 'div' | 'mod' ...'}
+
   TAstBinaryOp = class(TNode)
   public
     function GetType(Ctx: TELContext): PTypeInfo; override;
     function GetValue(Ctx: TELContext): TValue; override;
   end;
 
-  // Composite expression (any combination of text and bracketed expressions ${expr})
+{$EndRegion}
+
+{$Region 'TAstCompositeExpression: Composite expression'}
+
+  // (any combination of text and bracketed expressions ${expr})
   TAstCompositeExpression = class(TNode)
   public
     function GetType(Ctx: TELContext): PTypeInfo; override;
     function GetValue(Ctx: TELContext): TValue; override;
   end;
+
+{$EndRegion}
+
+{$Region 'IExpressionFactory'}
 
   IExpressionFactory = interface
     function GetContext: TELContext;
@@ -126,7 +178,10 @@ type
     function CreateMethodExpression(const Expr: string; ExpectedType: PTypeInfo; ParamTypes: array of PTypeInfo): TMethodExpression;
   end;
 
-  // User variable
+{$EndRegion}
+
+{$Region 'TUserVarExpression: User variable'}
+
   TUserVarExpression = class(TValueExpression)
   private
     FValue: TValue;
@@ -135,7 +190,10 @@ type
     procedure SetValue(Ctx: TElContext; Value: TValue); override;
   end;
 
-  // Hash table for parsed expressions
+{$EndRegion}
+
+{$Region 'TCachedExpression: Hash table for parsed expressions'}
+
   TCachedExpression = class(TNodeVisitor)
   private
     FTable: TDictionary<string, TNode>;
@@ -157,12 +215,14 @@ type
     procedure Visit(Node: TNode); override;
   end;
 
+{$EndRegion}
+
 implementation
 
 uses
-  ElFactory;
+  Oz.El.Factory;
 
-{ TNode }
+{$Region 'TNode'}
 
 constructor TNode.Create(Op: TSymbol);
 begin
@@ -209,7 +269,8 @@ begin
 end;
 
 procedure TNode.Accept(Visitor: TNodeVisitor);
-var i: Integer;
+var
+  i: Integer;
 begin
   Visitor.Visit(Self);
   if Children <> nil then
@@ -232,7 +293,9 @@ begin
   Result := False;
 end;
 
-{ TAstCompositeExpression }
+{$EndRegion}
+
+{$Region 'TAstCompositeExpression'}
 
 function TAstCompositeExpression.GetType(Ctx: TELContext): PTypeInfo;
 begin
@@ -240,7 +303,10 @@ begin
 end;
 
 function TAstCompositeExpression.GetValue(Ctx: TELContext): TValue;
-var Sb: TStringBuilder; V: TValue; i: Integer;
+var
+  Sb: TStringBuilder;
+  V: TValue;
+  i: Integer;
 begin
   Sb := TStringBuilder.Create;
   try
@@ -256,10 +322,13 @@ begin
   end;
 end;
 
-{ TAstLiteralExpression }
+{$EndRegion}
+
+{$Region 'TAstLiteralExpression'}
 
 constructor TAstLiteralExpression.Create(Op: TSymbol; const V: TValue);
-var s: string;
+var
+  s: string;
 begin
   inherited Create(Op);
   FValue := V;
@@ -330,7 +399,9 @@ begin
   end;
 end;
 
-{ TAstBracedExpression }
+{$EndRegion}
+
+{$Region 'TAstBracedExpression'}
 
 function TAstBracedExpression.GetType(Ctx: TELContext): PTypeInfo;
 begin
@@ -352,10 +423,13 @@ begin
   Children[0].SetValue(Ctx, Value);
 end;
 
-{ TAstChoice }
+{$EndRegion}
+
+{$Region 'TAstChoice'}
 
 function TAstChoice.GetType(Ctx: TELContext): PTypeInfo;
-var V: TValue;
+var
+  V: TValue;
 begin
   V := GetValue(Ctx);
   if V.IsEmpty then
@@ -375,7 +449,9 @@ begin
     Result := Children[2].GetValue(Ctx);
 end;
 
-{ TAstRelation }
+{$EndRegion}
+
+{$Region 'TAstRelation'}
 
 function TAstRelation.GetType(Ctx: TELContext): PTypeInfo;
 begin
@@ -383,7 +459,8 @@ begin
 end;
 
 function TAstRelation.GetValue(Ctx: TELContext): TValue;
-var X, Y: TValue;
+var
+  X, Y: TValue;
 begin
   X := Children[0].GetValue(Ctx);
   Y := Children[1].GetValue(Ctx);
@@ -406,10 +483,13 @@ begin
     end;
 end;
 
-{ TAstUnaryOp }
+{$EndRegion}
+
+{$Region 'TAstUnaryOp'}
 
 function TAstUnaryOp.GetType(Ctx: TELContext): PTypeInfo;
-var V: TValue;
+var
+  V: TValue;
 begin
   V := GetValue(Ctx);
   if V.IsEmpty then
@@ -419,7 +499,8 @@ begin
 end;
 
 function TAstUnaryOp.GetValue(Ctx: TELContext): TValue;
-var V: TValue;
+var
+  V: TValue;
 begin
   V := Children[0].GetValue(Ctx);
   if Op = EmptySym then
@@ -428,7 +509,9 @@ begin
     Result := VM.Negate(V)
 end;
 
-{ TAstBinaryOp }
+{$EndRegion}
+
+{$Region 'TAstBinaryOp'}
 
 function TAstBinaryOp.GetType(Ctx: TELContext): PTypeInfo;
 begin
@@ -436,7 +519,8 @@ begin
 end;
 
 function TAstBinaryOp.GetValue(Ctx: TELContext): TValue;
-var X, Y: TValue;
+var
+  X, Y: TValue;
 begin
   X := Children[0].GetValue(Ctx);
   Y := Children[1].GetValue(Ctx);
@@ -458,7 +542,9 @@ begin
   end;
 end;
 
-{ TAstIdentifier }
+{$EndRegion}
+
+{$Region 'TAstIdentifier'}
 
 constructor TAstIdentifier.Create(Op: TSymbol; const Ident: string);
 begin
@@ -490,7 +576,7 @@ begin
   Result := Ctx.GetElResolver.GetValue(Ctx, nil, Image);
   if not Ctx.PropertyResolved then
   begin
-    // ≈сли не найден идентификатор - добавить пользовательскую переменную
+    // If no identifier is found - add a user variable
     Expr := TUserVarExpression.Create(Image);
     Map.SetVariable(Image, Expr);
     Result := '';
@@ -531,7 +617,9 @@ begin
   Ctx.GetElResolver.SetValue(Ctx, nil, Image, Value);
 end;
 
-{ TCachedExpression }
+{$EndRegion}
+
+{$Region 'TCachedExpression'}
 
 constructor TCachedExpression.Create;
 begin
@@ -540,7 +628,8 @@ begin
 end;
 
 destructor TCachedExpression.Destroy;
-var Item: TPair<string, TNode>;
+var
+  Item: TPair<string, TNode>;
 begin
   for Item in FTable do
     Item.Value.Free;
@@ -582,7 +671,9 @@ begin
     Inc(FIdent.RefCount);
 end;
 
-{ TUserVarExpression }
+{$EndRegion}
+
+{$Region 'TUserVarExpression'}
 
 function TUserVarExpression.GetValue(Ctx: TElContext): TValue;
 begin
@@ -593,6 +684,8 @@ procedure TUserVarExpression.SetValue(Ctx: TElContext; Value: TValue);
 begin
   FValue := Value;
 end;
+
+{$EndRegion}
 
 end.
 

@@ -1,0 +1,183 @@
+COMPILER El
+(* Expression Language *)
+
+id = 0;
+str = 1;
+
+MACROS
+  prefix = "el" .
+
+CHARACTERS
+  eol = '\r' .
+  lf = '\n' .
+  tab = '\t' .
+  char = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" .
+  letter = "_" + char.
+  digit = "0123456789" .
+  hexDigit = digit + "ABCDEF"  + "abcdef".
+  noQuote = ANY - "'" - eol .
+  noApos = ANY - '"' - eol .
+  noBrackets = ANY - "${" - "#{".
+
+  apos = '"' .
+  quote = "'" .
+
+TOKENS
+
+  Identifier = letter { letter | digit} .
+
+  Int = digit { digit } .
+
+  HexInt = '0' ( 'x' | 'X' ) hexDigit { hexDigit } .
+
+  Float = digit { digit } '.' { digit } [ ('E' |'e') [ '+' | '-' ] digit { digit } ] .
+
+  String =
+  ( '"'
+  ( '\\' '0' ( 'x' | 'X' ) hexDigit [ hexDigit ]
+  | '\\' ( 't' | 'b' | 'n' | 'r' | 'f' | '\'' | '"' | '\\' )
+  | noApos )
+  '"' ) |
+  ( '\''
+  ( '\\' '0' ( 'x' | 'X' ) hexDigit [ hexDigit ]
+  | '\'' ( 't' | 'b' | 'n' | 'r' | 'f' | '\'' | '"' | '\\' )
+  | noQuote )
+  '\'' ) .
+
+IGNORE eol + lf + tab
+
+PRODUCTIONS
+
+El                           (. var
+                                  r: TNode; .)
+ =
+                             (. r := TAstCompositeExpression.Create(Sym); .)
+CompositeExpression<r>
+{  CompositeExpression<r> }
+.
+
+CompositeExpression<var r: TNode>
+                             (. var
+                                  x: TNode; .)
+ =                           (. x := nil; .)
+( "${" Value<x> '}'
+| "#{" Value<x> '}'
+)                            (. r.Children.Add(x); .)
+.
+
+Value<var r: TNode>
+ =
+Expression<r>
+[ '?' Expression<r> ':' Expression<r>
+]
+.
+
+Expression<var r: TNode>
+ =
+SimpleExpression<r>
+[ RelOp<op> SimpleExpression<r>
+]
+.
+
+SimpleExpression<var r: TNode>
+                             (. var
+                                  op: TOp;
+                                  x: TNode; .)
+ =
+[ UnaryOp<op> ]
+Term<x>                      (. if op = opPlus then
+                                  r := x
+                                else
+                                  r := TAstUnaryOp.Create(op, x); .)
+{ AddOp<op> Term<x> }
+.
+
+Term<var r: TNode>           (. var
+                                  op: TOp;
+                                  x: TNode; .)
+ =
+Factor<x>
+{ MulOp<op>
+Factor<x>
+}
+.
+
+Factor<var r: TNode>         (. var
+                                  x: TNode;
+                                  NameSpace, Ident: string; .)
+ =
+Number
+| String
+| "true" | "false"
+| ("null" | "nil")
+| ('!' | "not")
+Factor<x>
+| '(' Expression<r> ')'
+| Designator
+[ Parameters
+]
+.
+
+Designator = {
+'.' Identifier
+| '[' Expression<r> ']'
+}
+.
+ 
+Parameters = '(' [
+Expression<r>
+{ ',' Expression<r> }
+] ')'
+.
+
+Number 
+ =
+Int
+| HexInt
+| Float
+.
+
+AddOp<var op: TOp>
+ =
+'+'
+| '-' 
+| ( "or" | "||"
+)
+.
+
+UnaryOp<var op: TOp>
+ =
+'+'
+| '-'
+| "empty"
+.
+
+MulOp<var op: TOp>
+ =
+( "and" | "&&" 
+)
+| '*'
+| '/'
+| "div"
+| ( '%' | "mod"
+)
+.
+ 
+RelOp<var op: TOp>
+ =
+( '>' | "gt"
+)
+| ('<' | "lt"
+)
+| (">=" | "ge"
+)
+| ("<=" | "le"
+)
+| ('=' | "==" | "eq"
+)
+| ("!=" | "<>" | "ne"
+)
+.
+
+END El.
+

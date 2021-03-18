@@ -1,4 +1,22 @@
-unit El;
+(* Oz Expression Language, for Delphi
+ * Copyright (c) 2021 Tomsk, Marat Shaimardanov
+ *
+ * This file is part of Oz Expression Language, for Delphi
+ * is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This file is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this file. If not, see <https://www.gnu.org/licenses/>.
+*)
+
+unit Oz.El.Classes;
 
 interface
 
@@ -8,7 +26,8 @@ uses
 type
   TELContext = class;
 
-  // Encapsulation of the base model of an object and its properties
+{$Region 'TValueReference: Encapsulation of the base model of an object and its properties'}
+
   TValueReference = class
   private
     FObj: TObject;
@@ -20,7 +39,10 @@ type
     property Prop: Pointer read FProp;
   end;
 
-  // Encapsulation of the base model of an object and its method
+{$EndRegion}
+
+{$Region 'TMethodInfo: Encapsulation of the base model of an object and its method'}
+
   TMethodInfo = class
   private
     FObj: TObject;
@@ -32,7 +54,10 @@ type
     property Method: Pointer read FMethod;
   end;
 
-  // Expression (method or variable)
+{$EndRegion}
+
+{$Region 'TExpression: Expression (method or variable)'}
+
   TExpression  = class
   private
     FExpr: string;
@@ -42,7 +67,10 @@ type
     function GetExpressionString: string;
   end;
 
-  // Expression, the value of which can be obtained or set
+{$EndRegion}
+
+{$Region 'TValueExpression: Expression, the value of which can be obtained or set'}
+
   TValueExpression = class(TExpression)
   public
     function GetValue(Ctx: TElContext): TValue; virtual; abstract;
@@ -51,7 +79,10 @@ type
     function IsReadOnly(Ctx: TElContext): boolean; virtual;
   end;
 
-  // Function
+{$EndRegion}
+
+{$Region 'TMethodExpression: Function'}
+
   TMethodExpression  = class(TExpression)
   public
     // Get information about the method signature
@@ -61,7 +92,10 @@ type
     function IsReadOnly(Ctx: TElContext; Obj: TObject): boolean; virtual; abstract;
   end;
 
-  // List of variables (used when parsing an expression)
+{$EndRegion}
+
+{$Region 'TVariableMapper: List of variables (used when parsing an expression)'}
+
   TVariableMapper = class
   private
     FMap: TDictionary<string, TValueExpression>;
@@ -76,7 +110,10 @@ type
     property Map: TDictionary<string, TValueExpression> read FMap;
   end;
 
-  // List of functions (used when parsing an expression)
+{$EndRegion}
+
+{$Region 'TFunctionMapper: List of functions (used when parsing an expression)'}
+
   TFunctionMapper = class
   private
     FMap: TDictionary<string, TMethodExpression>;
@@ -86,6 +123,10 @@ type
     function ResolveFunction(const Prefix, LocalName: string): TMethodExpression;
     procedure AddFunction(const Prefix, LocalName: string; Method: TMethodExpression);
   end;
+
+{$EndRegion}
+
+{$Region 'TElResolver'}
 
   // Tries to get or set the property value
   // If the attempt was successful - sets the Ctx.PropertyResolved property  TElResolver = class
@@ -101,7 +142,10 @@ type
     function GetCommonPropertyType(Ctx: TElContext; Obj: TObject): PTypeInfo; virtual;
   end;
 
-  // Context for calculating expressions
+{$EndRegion}
+
+{$Region 'TElContext: Context for calculating expressions'}
+
   TElContext = class(TSingletonImplementation)
   private
     FPropertyResolved: Boolean;
@@ -123,9 +167,11 @@ type
     property PropertyResolved: Boolean read FPropertyResolved write FPropertyResolved;
   end;
 
+{$EndRegion}
+
 implementation
 
-{ TExpression }
+{$Region 'TExpression'}
 
 constructor TExpression.Create(const aExpressionString: string);
 begin
@@ -138,7 +184,9 @@ begin
   Result := FExpr;
 end;
 
-{ TValueExpression }
+{$EndRegion}
+
+{$Region 'TValueExpression'}
 
 function TValueExpression.GetType(Ctx: TElContext): PTypeInfo;
 begin
@@ -155,7 +203,9 @@ begin
   raise Exception.Create('Unsupported method');
 end;
 
-{ TVariableMapper }
+{$EndRegion}
+
+{$Region 'TVariableMapper'}
 
 constructor TVariableMapper.Create;
 begin
@@ -188,7 +238,9 @@ begin
   FMap.AddOrSetValue(Variable, Expression);
 end;
 
-{ TFunctionMapper }
+{$EndRegion}
+
+{$Region 'TFunctionMapper'}
 
 constructor TFunctionMapper.Create;
 begin
@@ -210,7 +262,8 @@ begin
 end;
 
 function TFunctionMapper.ResolveFunction(const Prefix, LocalName: string): TMethodExpression;
-var R: TMethodExpression;
+var
+  R: TMethodExpression;
 begin
   if FMap.TryGetValue(Prefix + ':' +  LocalName, R) then
     Result := R
@@ -218,7 +271,9 @@ begin
     Result := nil;
 end;
 
-{ TElContext }
+{$EndRegion}
+
+{$Region 'TElContext'}
 
 constructor TElContext.Create;
 begin
@@ -250,7 +305,7 @@ end;
 function TElContext.GetContext(Key: TCLass): TObject;
 begin
   if not FContextObjects.TryGetValue(Key, Result) then
-    raise Exception.CreateFmt('GetContext: в контексте не обнаружен объект %s', [Key.ClassName]);
+    raise Exception.CreateFmt('GetContext: there is no object detected in the context %s', [Key.ClassName]);
 end;
 
 procedure TElContext.PutContext(Key: TCLass; ContextObject: TObject);
@@ -258,7 +313,9 @@ begin
   FContextObjects.AddOrSetValue(Key, ContextObject);
 end;
 
-{ TElResolver }
+{$EndRegion}
+
+{$Region 'TElResolver'}
 
 function TElResolver.GetCommonPropertyType(Ctx: TElContext; Obj: TObject): PTypeInfo;
 begin
@@ -274,6 +331,8 @@ procedure TElResolver.SetValue(Ctx: TElContext; Obj: TObject; const Prop: TValue
 begin
   raise Exception.Create('Unsupported method');
 end;
+
+{$EndRegion}
 
 end.
 

@@ -1,12 +1,31 @@
-unit ElParser;
+(* Oz Expression Language, for Delphi
+ * Copyright (c) 2021 Tomsk, Marat Shaimardanov
+ *
+ * This file is part of Oz Expression Language, for Delphi
+ * is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This file is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this file. If not, see <https://www.gnu.org/licenses/>.
+*)
+
+unit Oz.El.Parser;
 
 interface
 
 uses
-  Classes, SysUtils, Rtti, Dialogs, ElScanner, ElAst;
+  Classes, SysUtils, Rtti, Dialogs, Oz.El.Scanner, Oz.El.Ast;
+
+{$Region 'TELParser: Expression parser'}
 
 type
-  // Expression parser
   TELParser = class
   private
     FScanner: TELScanner;
@@ -39,12 +58,14 @@ type
     property ErrorCount: Integer read FErrorCount;
   end;
 
+{$EndRegion}
+
 implementation
 
 const
   minErrDist = 2;
 
-{ TELParser }
+{$Region 'TELParser'}
 
 constructor TELParser.Create(const Source: string);
 begin
@@ -65,8 +86,9 @@ function TELParser.CompositeExpression: TAstCompositeExpression;
 var
   X: TNode;
 begin
-  // A compound expression is a text within which there are expressions
-  // enclosed in brackets  Result := TAstCompositeExpression.Create(Sym);
+  // A compound expression is a text,
+  // within which there are expressions enclosed in brackets
+  Result := TAstCompositeExpression.Create(Sym);
   X := nil;
   repeat
     if Sym = TextSym then
@@ -95,7 +117,8 @@ begin
 end;
 
 function TELParser.Choice: TNode;
-var X: TNode;
+var
+  X: TNode;
 begin
   X := Expression;
   if Sym = QuerySym then
@@ -110,7 +133,9 @@ begin
 end;
 
 function TELParser.Expression: TNode;
-var X: TNode; Op: TSymbol;
+var
+  X: TNode;
+  Op: TSymbol;
 begin
   X := SimpleExpression;
   if Sym in [EqSym, GtSym, LtSym, GeSym, LeSym, EqSym, NeSym] then
@@ -123,7 +148,10 @@ begin
 end;
 
 function TELParser.SimpleExpression: TNode;
-var X: TNode; Op: TSymbol; i: Integer;
+var
+  i: Integer;
+  X: TNode;
+  Op: TSymbol;
 begin
   if Sym = PlusSym then
   begin
@@ -150,7 +178,10 @@ begin
 end;
 
 function TELParser.Term: TNode;
-var X: TNode; Op: TSymbol; i: Integer;
+var
+  i: Integer;
+  X: TNode;
+  Op: TSymbol;
 begin
   X := Factor;
   i := 0;
@@ -166,7 +197,9 @@ begin
 end;
 
 function TELParser.Factor: TNode;
-var X: TNode; NameSpace, Ident: string;
+var
+  X: TNode;
+  NameSpace, Ident: string;
 begin
   { sync }
   if Sym < LparenSym then
@@ -218,7 +251,8 @@ begin
 end;
 
 procedure TELParser.Designator(X: TNode);
-var Y: TNode;
+var
+  Y: TNode;
 begin
   while (Sym = LbrackSym) or (Sym = PointSym) or (Sym = LparenSym) do
   begin
@@ -298,6 +332,8 @@ begin
   else
     SynError(Ord(n));
 end;
+
+{$EndRegion}
 
 end.
 
